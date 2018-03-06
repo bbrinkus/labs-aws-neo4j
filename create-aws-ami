@@ -1,0 +1,93 @@
+#!/bin/bash
+
+readonly TEMPLATE="ec2-linux-neo4j.json"
+
+debug=""
+force=""
+
+verify_command_exists() {
+    if ! command -v "${1}" >/dev/null 2>&1; then
+        echo "The ${1} command is not available!"
+        exit 1
+    fi
+}
+
+get_aws_configuration_value() {
+    local value
+    value=$(aws configure get ${1})
+    if [[ -z ${value} ]]; then
+        echo "The value ${1} is not conifgured. Use 'aws configure list' to verify manually!"
+        exit 1
+    fi
+    echo ${value}
+}
+
+verify_aws_configured() {
+    local configuration_value
+
+    configuration_value=$(get_aws_configuration_value aws_access_key_id)
+    export AWS_ACCESS_KEY_ID=${configuration_value}
+
+    configuration_value=$(get_aws_configuration_value aws_secret_access_key)
+    export AWS_SECRET_ACCESS_KEY=${configuration_value}
+
+    configuration_value=$(get_aws_configuration_value region)
+    export AWS_REGION=${configuration_value}
+}
+
+get_latest_ami() {
+    local ami
+    ami=$(aws ec2 describe-images --owners amazon \
+        --filters 'Name=name,Values=amzn-ami-hvm-????.??.?.????????-x86_64-gp2' \
+        --query 'sort_by(Images, &CreationDate) | [-1].ImageId' \
+        | sed -e s/\"//g)
+    if [[ -z ${ami} ]]; then
+        echo "Latest EC2 Linux AMI value is missing!"
+        exit 1
+    fi
+    echo ${ami}
+}
+
+build_ami() {
+    packer build ${debug} ${force} ${TEMPLATE}
+}
+
+usage() {
+    echo "Usage: $0 [-f] [-d] [-v]"
+    exit 1
+}
+
+process_arguments() {
+    while getopts ":dfv" opt
+    do
+        case ${opt} in
+            d)
+                debug="--debug"
+                ;;
+            f)
+                force="--force"
+                ;;
+            v)
+                packer validate ${TEMPLATE}
+                ;;
+            \?)
+                echo "Invalid option: -${OPTARG}!"
+                usage
+                ;;
+            :)
+                echo "Option -${OPTARG} requires an argument!"
+                usage
+                ;;
+        esac
+    done
+}
+
+main() {
+    process_arguments "$@"
+    verify_command_exists aws
+    verify_command_exists packer
+    verify_aws_configured
+    build_ami
+}
+
+main "$@"
