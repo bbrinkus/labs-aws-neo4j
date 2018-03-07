@@ -55,6 +55,8 @@
         {
             "type": "shell",
             "inline": [
+                "sudo sh -c 'echo LANG=en_US.utf-8 >> /etc/environment'"
+                "sudo sh -c 'echo LC_ALL=en_US.utf-8 >> /etc/environment'"
                 "sudo yum update -y"
             ]
         },
