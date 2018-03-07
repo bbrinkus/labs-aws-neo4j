@@ -2,7 +2,23 @@
 
 Create a new AMI based on the latest Amazon EC2 Linux AMI that contains the latest Neo4j community edition.
 
-## Packer Notes
+## S3 database bucket
+
+The generated databases are stored in an S3 bucket with the following format:
+
+```
+<s3-bucket-name>
+    * <timestamp>
+        * graph.db
+            * <database content>
+    * <timestamp>
+        * graph.db
+            * <database content>
+```
+
+The timestamp format: `20180306-230923Z` (`date -u +"%Y%m%d-%H%M%SZ"`)
+
+## Packer notes
 
 ### Directory upload
 

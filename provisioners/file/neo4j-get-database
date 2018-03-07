@@ -1,7 +1,89 @@
 #!/bin/bash
 
-main() {
-    echo "Implementation is in progress!"
+verify_command_exists() {
+    if ! command -v "${1}" >/dev/null 2>&1; then
+        echo "The ${1} command is not available!"
+        exit 1
+    fi
 }
 
-main
+verify_aws_configured() {
+    if [[ -z ${AWS_ACCESS_KEY_ID} ]]; then
+        echo "The AWS_ACCESS_KEY_ID is not available!"
+        exit 1
+    fi
+    if [[ -z ${AWS_SECRET_ACCESS_KEY} ]]; then
+        echo "The AWS_SECRET_ACCESS_KEY is not available!"
+        exit 1
+    fi
+}
+
+usage() {
+    echo "Usage: $0 -b <bucket name>"
+    exit 1
+}
+
+process_arguments() {
+    while getopts ":b:" opt
+    do
+        case ${opt} in
+            b)
+                readonly BUCKET=s3://${OPTARG}
+                ;;
+            \?)
+                echo "Invalid option: -${OPTARG}!"
+                usage
+                ;;
+            :)
+                echo "Option -${OPTARG} requires an argument!"
+                usage
+                ;;
+        esac
+    done
+
+    if [[ -z ${BUCKET} ]]; then
+        echo "The S3 bucket name is missing!"
+        usage
+    fi
+}
+
+get_latest_db_name() {
+    echo "$(aws s3 ls ${BUCKET} | awk '{print $2}' | sort | tail -n 1)"
+}
+
+get_latest_database_path() {
+    local return_value
+    local latest_db_name
+
+    return_value=${1}
+
+    echo "Getting the latest database folder name"
+    latest_db_name=$(aws s3 ls ${BUCKET} | awk '{print $2}' | sort | tail -n 1)
+
+    # shellcheck disable=SC2086
+    eval ${return_value}="'${BUCKET}/${latest_db_name}'"
+}
+
+main() {
+    local s3_path
+
+    process_arguments "$@"
+    verify_command_exists aws
+    verify_aws_configured
+
+    get_latest_database_path s3_path
+    echo "The latest database S3 path is ${s3_path}"
+
+    echo "Copy new database from S3"
+    aws s3 --recursive cp ${s3_path} /tmp/
+
+    sudo service neo4j stop
+    echo "Remove current database"
+    sudo rm -rf /var/lib/neo4j/data/databases/graph.db/
+    echo "Copy new database"
+    sudo mv /tmp/graph.db/ /var/lib/neo4j/data/databases/
+    sudo chown -R neo4j:neo4j /var/lib/neo4j/data/databases/
+    sudo service neo4j start
+}
+
+main "$@"
