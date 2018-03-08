@@ -1,6 +1,6 @@
 #!/bin/bash
 
-install_gpg() {
+install_neo4j_gpg() {
     echo "Install Neo4j repository GPG key"
     wget --quiet -P /tmp http://debian.neo4j.org/neotechnology.gpg.key
     sudo rpm --import /tmp/neotechnology.gpg.key
@@ -11,16 +11,15 @@ install_neo4j() {
     sudo yum install -y neo4j
     echo "Set Java 8 to default"
     sudo /usr/sbin/alternatives --set java /usr/lib/jvm/jre-1.8.0-openjdk.x86_64/bin/java
-    echo "Remove Java 7"
-    sudo yum remove -y java-1.7.0-openjdk
 }
 
 start_on_boot() {
+    echo "Configure to start Neo4j at startup"
     sudo chkconfig neo4j on
 }
 
 main() {
-    install_gpg
+    install_neo4j_gpg
     install_neo4j
     start_on_boot
 }
