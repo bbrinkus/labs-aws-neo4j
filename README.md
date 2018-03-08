@@ -18,6 +18,33 @@ The generated databases are stored in an S3 bucket with the following format:
 
 The timestamp format: `20180306-230923Z` (`date -u +"%Y%m%d-%H%M%SZ"`)
 
+## Cloud-init
+
+Example init script that downloads the latest database version and set the initial password for the neo4j user.
+The access key has a restricted readonly S3 role to the database bucket.
+
+```
+#!/bin/bash
+
+echo "Start cloud init"
+
+NEO_PASSWORD="<neo4j-new-password>"
+export AWS_ACCESS_KEY_ID="<aws-access-key>"
+export AWS_SECRET_ACCESS_KEY="<aws-secret-key>"
+
+echo "Update system packages"
+yum update -y
+
+echo "Initialize new password to the neo4j user"
+neo4j-admin set-initial-password ${NEO_PASSWORD}
+chown -R neo4j:neo4j /var/lib/neo4j/data/dbms/
+
+echo "Update Neo4j database"
+/opt/labs/neo4j-get-database -b <s3-bucket-name>
+
+echo "Finish cloud init"
+```
+
 ## Packer notes
 
 ### Directory upload
