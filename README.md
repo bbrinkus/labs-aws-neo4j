@@ -45,6 +45,39 @@ echo "Update Neo4j database"
 echo "Finish cloud init"
 ```
 
+## IAM Policy
+
+This policy will restrict the list and get access to the database bucket only.
+
+```
+#
+# CloudFormation configuration
+#
+DatabaseS3ROPolicy:
+  Type: "AWS::IAM::Policy"
+  Properties:
+    PolicyName: "DatabaseS3ReadOnly"
+    PolicyDocument:
+      Version: "2012-10-17"
+      Statement:
+        -
+          Effect: "Allow"
+          Action:
+            - "s3:Get*"
+            - "s3:List*"
+          Resource:
+            - "arn:aws:s3:::<s3-bucket-name>"
+            - "arn:aws:s3:::s3-bucket-name/*"
+    Groups:
+      -
+        Ref: "DatabaseS3ROGroup"
+
+DatabaseS3ROGroup:
+  Type: AWS::IAM::Group
+  Properties:
+    Path: "/"
+```
+
 ## Packer notes
 
 ### Directory upload
